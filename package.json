@@ -1,0 +1,14 @@
+{
+  "name": "clipsync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local LAN chat (foundation for future clipboard sync)",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
