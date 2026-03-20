@@ -13,6 +13,22 @@ const MAX_MESSAGE_CHARS = 100_000;
 
 const app = express();
 const publicDir = path.join(__dirname, "public");
+
+function listLanIPv4() {
+  const nets = os.networkInterfaces();
+  const ips = [];
+  for (const list of Object.values(nets)) {
+    for (const n of list || []) {
+      if (n.family === "IPv4" && !n.internal) ips.push(n.address);
+    }
+  }
+  return ips;
+}
+
+app.get("/api/lan-info", (_req, res) => {
+  res.json({ addresses: listLanIPv4(), port: PORT });
+});
+
 app.use(express.static(publicDir));
 
 const server = http.createServer(app);
@@ -59,13 +75,13 @@ wss.on("connection", (ws) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  const nets = os.networkInterfaces();
-  const ips = [];
-  for (const list of Object.values(nets)) {
-    for (const n of list || []) {
-      if (n.family === "IPv4" && !n.internal) ips.push(n.address);
-    }
+  const ips = listLanIPv4();
+  const [first, ...rest] = ips;
+  if (first) {
+    console.log(`ClipSync chat: http://${first}:${PORT}`);
+    console.log(`  on this machine: http://localhost:${PORT}`);
+    for (const ip of rest) console.log(`  also: http://${ip}:${PORT}`);
+  } else {
+    console.log(`ClipSync chat: http://localhost:${PORT}`);
   }
-  console.log(`ClipSync chat: http://localhost:${PORT}`);
-  for (const ip of ips) console.log(`  also: http://${ip}:${PORT}`);
 });

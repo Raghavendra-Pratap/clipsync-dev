@@ -45,6 +45,25 @@
     }
     .status.connected { color: #34d399; }
     .status.disconnected { color: #f87171; }
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.35rem;
+      text-align: right;
+      max-width: min(100%, 22rem);
+    }
+    .share-urls {
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.35;
+      word-break: break-all;
+    }
+    .share-urls a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+    .share-urls a:hover { text-decoration: underline; }
     #log {
       flex: 1;
       overflow-y: auto;
@@ -154,7 +173,10 @@
 <body>
   <header>
     <h1>ClipSync</h1>
-    <span id="status" class="status disconnected">Disconnected</span>
+    <div class="header-right">
+      <div id="shareUrls" class="share-urls" aria-live="polite">Loading…</div>
+      <span id="status" class="status disconnected">Disconnected</span>
+    </div>
   </header>
   <div class="setup">
     <label for="name">Display name</label>
@@ -184,6 +206,38 @@
     const sendBtn = document.getElementById("send");
     const logEl = document.getElementById("log");
     const statusEl = document.getElementById("status");
+    const shareUrlsEl = document.getElementById("shareUrls");
+
+    function isAppleLikePlatform() {
+      const p = navigator.userAgentData?.platform;
+      if (p === "macOS" || p === "iOS") return true;
+      return /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
+    }
+
+    (async function loadLanInfo() {
+      try {
+        const r = await fetch("/api/lan-info");
+        const j = await r.json();
+        const port = String(j.port || location.port || (location.protocol === "https:" ? 443 : 80));
+        const addrs = Array.isArray(j.addresses) ? j.addresses : [];
+        shareUrlsEl.replaceChildren();
+        if (!addrs.length) {
+          shareUrlsEl.textContent = `${location.protocol}//${location.host}`;
+          return;
+        }
+        shareUrlsEl.appendChild(document.createTextNode("Open / share: "));
+        addrs.forEach((addr, i) => {
+          const u = `${location.protocol}//${addr}:${port}`;
+          const a = document.createElement("a");
+          a.href = u;
+          a.textContent = u;
+          shareUrlsEl.appendChild(a);
+          if (i < addrs.length - 1) shareUrlsEl.appendChild(document.createTextNode(" · "));
+        });
+      } catch {
+        shareUrlsEl.textContent = `${location.protocol}//${location.host}`;
+      }
+    })();
 
     nameEl.value = localStorage.getItem(nameKey) || "";
     nameEl.addEventListener("change", () => {
@@ -367,6 +421,11 @@
           (t.tagName === "INPUT" || t.tagName === "TEXTAREA") &&
           !t.readOnly &&
           !t.disabled;
+        const apple = isAppleLikePlatform();
+        const nativePaste =
+          (apple && e.metaKey && !e.ctrlKey) || (!apple && e.ctrlKey && !e.metaKey);
+        if (nativePaste && inField) return;
+
         const target = inField ? t : inputEl;
         if (target.readOnly || target.disabled) return;
 
